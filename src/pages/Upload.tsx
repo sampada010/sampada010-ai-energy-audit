@@ -1,57 +1,77 @@
 import { useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { Upload as UploadIcon, Zap, Leaf, FileJson } from "lucide-react";
+import { Upload as UploadIcon, Zap, Leaf, FileUp, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { AuditResult } from "@/types/audit";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { useToast } from "@/hooks/use-toast";
+
+const API_URL = "http://localhost:5000/api/audit";
 
 const UploadPage = () => {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [dragOver, setDragOver] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [fileName, setFileName] = useState<string | null>(null);
+  const [file, setFile] = useState<File | null>(null);
+  const [epochs, setEpochs] = useState(1);
+  const [loading, setLoading] = useState(false);
 
-  const processFile = useCallback(
-    (file: File) => {
-      setError(null);
-      setFileName(file.name);
-
-      if (!file.name.endsWith(".json")) {
-        setError("Please upload a JSON audit result file.");
-        return;
-      }
-
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        try {
-          const data = JSON.parse(e.target?.result as string) as AuditResult;
-          if (!data.experiment || !data.metrics || !data.recommendations) {
-            setError("Invalid audit JSON structure. Please run final.py first.");
-            return;
-          }
-          navigate("/dashboard", { state: { auditData: data } });
-        } catch {
-          setError("Failed to parse JSON file.");
-        }
-      };
-      reader.readAsText(file);
-    },
-    [navigate]
-  );
+  const handleFile = useCallback((f: File) => {
+    if (!f.name.endsWith(".csv") && !f.name.endsWith(".pkl")) {
+      toast({
+        title: "Invalid file",
+        description: "Please upload a .csv or .pkl file.",
+        variant: "destructive",
+      });
+      return;
+    }
+    setFile(f);
+  }, [toast]);
 
   const handleDrop = useCallback(
     (e: React.DragEvent) => {
       e.preventDefault();
       setDragOver(false);
-      const file = e.dataTransfer.files[0];
-      if (file) processFile(file);
+      const f = e.dataTransfer.files[0];
+      if (f) handleFile(f);
     },
-    [processFile]
+    [handleFile]
   );
 
-  const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) processFile(file);
+  const handleSubmit = async () => {
+    if (!file) return;
+    setLoading(true);
+
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("epochs", epochs.toString());
+
+      const res = await fetch(API_URL, {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Audit failed");
+      }
+
+      const auditData = await res.json();
+      navigate("/dashboard", { state: { auditData } });
+    } catch (err: any) {
+      toast({
+        title: "Error",
+        description:
+          err.message === "Failed to fetch"
+            ? "Cannot connect to backend. Make sure Flask server is running on localhost:5000"
+            : err.message,
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -67,17 +87,17 @@ const UploadPage = () => {
           </h1>
         </div>
         <p className="text-muted-foreground text-lg max-w-xl mx-auto">
-          Upload your CodeCarbon audit JSON to visualize energy consumption,
-          carbon footprint, and get optimization recommendations.
+          Upload your dataset (.csv) or model (.pkl) file along with the number
+          of epochs to run the CodeCarbon energy audit.
         </p>
       </div>
 
       {/* Flow Steps */}
-      <div className="flex items-center gap-4 mb-10 text-sm text-muted-foreground">
+      <div className="flex items-center gap-4 mb-10 text-sm text-muted-foreground flex-wrap justify-center">
         {[
-          { icon: <FileJson className="h-4 w-4" />, label: "Run final.py locally" },
-          { icon: <UploadIcon className="h-4 w-4" />, label: "Upload JSON result" },
-          { icon: <Leaf className="h-4 w-4" />, label: "View dashboard" },
+          { icon: <FileUp className="h-4 w-4" />, label: "Upload CSV / PKL" },
+          { icon: <Zap className="h-4 w-4" />, label: "Run Energy Audit" },
+          { icon: <Leaf className="h-4 w-4" />, label: "View Dashboard" },
         ].map((step, i) => (
           <div key={i} className="flex items-center gap-2">
             {i > 0 && <span className="text-border">→</span>}
@@ -89,12 +109,17 @@ const UploadPage = () => {
         ))}
       </div>
 
-      {/* Upload Area */}
-      <Card className="w-full max-w-lg border-dashed border-2 hover:border-primary/50 transition-colors">
-        <CardContent className="p-0">
+      {/* Upload Card */}
+      <Card className="w-full max-w-lg">
+        <CardContent className="p-6 space-y-6">
+          {/* Drop Zone */}
           <label
-            className={`flex flex-col items-center justify-center p-12 cursor-pointer transition-colors rounded-lg ${
-              dragOver ? "bg-primary/10" : "hover:bg-secondary/30"
+            className={`flex flex-col items-center justify-center p-10 border-2 border-dashed rounded-lg cursor-pointer transition-colors ${
+              dragOver
+                ? "bg-primary/10 border-primary/50"
+                : file
+                ? "border-accent/50 bg-accent/5"
+                : "border-border hover:border-primary/30 hover:bg-secondary/30"
             }`}
             onDragOver={(e) => {
               e.preventDefault();
@@ -103,43 +128,91 @@ const UploadPage = () => {
             onDragLeave={() => setDragOver(false)}
             onDrop={handleDrop}
           >
-            <div className="p-4 rounded-full bg-primary/10 mb-4">
-              <UploadIcon className="h-10 w-10 text-primary" />
+            <div className={`p-3 rounded-full mb-3 ${file ? "bg-accent/20" : "bg-primary/10"}`}>
+              <UploadIcon className={`h-8 w-8 ${file ? "text-accent" : "text-primary"}`} />
             </div>
-            <p className="text-lg font-medium mb-1">
-              {fileName || "Drop your audit JSON here"}
-            </p>
-            <p className="text-sm text-muted-foreground mb-4">
-              or click to browse
-            </p>
-            <Button variant="outline" size="sm" asChild>
-              <span>Select File</span>
-            </Button>
+            {file ? (
+              <>
+                <p className="text-base font-medium text-accent">{file.name}</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {(file.size / 1024).toFixed(1)} KB · Click to change
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="text-base font-medium">Drop your CSV or PKL file here</p>
+                <p className="text-sm text-muted-foreground mt-1">or click to browse</p>
+              </>
+            )}
             <input
               type="file"
-              accept=".json"
+              accept=".csv,.pkl"
               className="hidden"
-              onChange={handleFileInput}
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) handleFile(f);
+              }}
             />
           </label>
+
+          {/* Epochs Input */}
+          <div className="space-y-2">
+            <Label htmlFor="epochs" className="text-sm">
+              Number of Epochs
+            </Label>
+            <Input
+              id="epochs"
+              type="number"
+              min={1}
+              max={100}
+              value={epochs}
+              onChange={(e) => setEpochs(Math.max(1, parseInt(e.target.value) || 1))}
+              className="bg-secondary/30"
+            />
+            <p className="text-xs text-muted-foreground">
+              More epochs = more accurate energy measurement but longer runtime
+            </p>
+          </div>
+
+          {/* Submit */}
+          <Button
+            className="w-full"
+            size="lg"
+            disabled={!file || loading}
+            onClick={handleSubmit}
+          >
+            {loading ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                Running Audit...
+              </>
+            ) : (
+              <>
+                <Zap className="h-4 w-4 mr-2" />
+                Run Energy Audit
+              </>
+            )}
+          </Button>
+
+          {loading && (
+            <p className="text-xs text-center text-muted-foreground animate-pulse">
+              CodeCarbon is measuring energy consumption. This may take a while depending on epochs and dataset size...
+            </p>
+          )}
         </CardContent>
       </Card>
 
-      {error && (
-        <p className="mt-4 text-destructive text-sm font-medium">{error}</p>
-      )}
-
-      {/* Instructions */}
+      {/* Backend instructions */}
       <div className="mt-10 max-w-lg w-full">
         <h3 className="text-sm font-semibold text-muted-foreground mb-3 uppercase tracking-wider">
-          How to generate the audit file
+          Backend Setup (run locally)
         </h3>
         <Card className="bg-secondary/30">
           <CardContent className="p-4 font-mono text-sm space-y-1 text-muted-foreground">
-            <p>$ python final.py</p>
-            <p className="text-foreground/70">Enter CSV or PKL file path: data.csv</p>
-            <p className="text-foreground/70">Enter number of epochs [default=1]: 5</p>
-            <p className="text-accent">✅ Saved JSON: results/audit_*.json</p>
+            <p>$ cd backend</p>
+            <p>$ pip install -r requirements.txt</p>
+            <p>$ python app.py</p>
+            <p className="text-accent">✅ Server running on http://localhost:5000</p>
           </CardContent>
         </Card>
       </div>
