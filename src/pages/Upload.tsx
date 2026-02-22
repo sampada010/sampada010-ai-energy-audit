@@ -1,6 +1,15 @@
 import { useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { Upload as UploadIcon, Zap, Leaf, FileUp, Loader2 } from "lucide-react";
+import {
+  Upload as UploadIcon,
+  Zap,
+  Leaf,
+  FileUp,
+  Loader2,
+  BarChart3,
+  Cpu,
+  Globe,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -14,20 +23,25 @@ const UploadPage = () => {
   const { toast } = useToast();
   const [dragOver, setDragOver] = useState(false);
   const [file, setFile] = useState<File | null>(null);
-  const [epochs, setEpochs] = useState(1);
+  const [epochsValue, setEpochsValue] = useState("1");
   const [loading, setLoading] = useState(false);
 
-  const handleFile = useCallback((f: File) => {
-    if (!f.name.endsWith(".csv") && !f.name.endsWith(".pkl")) {
-      toast({
-        title: "Invalid file",
-        description: "Please upload a .csv or .pkl file.",
-        variant: "destructive",
-      });
-      return;
-    }
-    setFile(f);
-  }, [toast]);
+  const epochs = Math.max(1, parseInt(epochsValue) || 1);
+
+  const handleFile = useCallback(
+    (f: File) => {
+      if (!f.name.endsWith(".csv") && !f.name.endsWith(".pkl")) {
+        toast({
+          title: "Invalid file",
+          description: "Please upload a .csv or .pkl file.",
+          variant: "destructive",
+        });
+        return;
+      }
+      setFile(f);
+    },
+    [toast]
+  );
 
   const handleDrop = useCallback(
     (e: React.DragEvent) => {
@@ -74,145 +88,208 @@ const UploadPage = () => {
     }
   };
 
+  const features = [
+    {
+      icon: <Cpu className="h-5 w-5 text-primary" />,
+      title: "Hardware Tracking",
+      desc: "CPU, GPU & RAM power draw",
+    },
+    {
+      icon: <Leaf className="h-5 w-5 text-[hsl(var(--success))]" />,
+      title: "Carbon Footprint",
+      desc: "CO₂ emissions per training run",
+    },
+    {
+      icon: <BarChart3 className="h-5 w-5 text-accent" />,
+      title: "Per-Epoch Analysis",
+      desc: "Energy breakdown by epoch",
+    },
+    {
+      icon: <Globe className="h-5 w-5 text-[hsl(var(--chart-energy))]" />,
+      title: "Region Aware",
+      desc: "Country-level grid intensity",
+    },
+  ];
+
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-6">
-      {/* Header */}
-      <div className="text-center mb-10">
-        <div className="flex items-center justify-center gap-3 mb-4">
-          <div className="p-3 rounded-xl bg-primary/20">
-            <Zap className="h-8 w-8 text-primary" />
+    <div className="min-h-screen flex flex-col lg:flex-row">
+      {/* Left Panel — Branding & Features */}
+      <div className="lg:w-1/2 flex flex-col justify-center p-8 lg:p-16 bg-secondary/20">
+        <div className="max-w-lg mx-auto lg:mx-0">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="p-3 rounded-xl bg-primary/20">
+              <Zap className="h-8 w-8 text-primary" />
+            </div>
+            <h1 className="text-3xl lg:text-4xl font-bold tracking-tight">
+              Energy Efficiency
+              <br />
+              <span className="text-accent">Audit</span>
+            </h1>
           </div>
-          <h1 className="text-4xl font-bold tracking-tight">
-            Energy Efficiency Audit
-          </h1>
+          <p className="text-muted-foreground text-base lg:text-lg mb-10 leading-relaxed">
+            Measure the energy consumption and carbon footprint of your ML
+            training pipeline. Upload a dataset or model and get an in-depth
+            efficiency report powered by CodeCarbon.
+          </p>
+
+          {/* Flow Steps */}
+          <div className="flex items-center gap-3 mb-10 text-sm text-muted-foreground">
+            {[
+              { icon: <FileUp className="h-4 w-4" />, label: "Upload" },
+              { icon: <Zap className="h-4 w-4" />, label: "Audit" },
+              { icon: <Leaf className="h-4 w-4" />, label: "Report" },
+            ].map((step, i) => (
+              <div key={i} className="flex items-center gap-2">
+                {i > 0 && (
+                  <span className="text-muted-foreground/40">→</span>
+                )}
+                <div className="flex items-center gap-1.5 bg-secondary/60 rounded-full px-3 py-1.5 border border-border/50">
+                  {step.icon}
+                  <span>{step.label}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Feature Grid */}
+          <div className="grid grid-cols-2 gap-4">
+            {features.map((f, i) => (
+              <div
+                key={i}
+                className="flex items-start gap-3 p-4 rounded-xl bg-card/60 border border-border/50"
+              >
+                <div className="shrink-0 mt-0.5">{f.icon}</div>
+                <div>
+                  <p className="text-sm font-semibold">{f.title}</p>
+                  <p className="text-xs text-muted-foreground">{f.desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
-        <p className="text-muted-foreground text-lg max-w-xl mx-auto">
-          Upload your dataset (.csv) or model (.pkl) file along with the number
-          of epochs to run the CodeCarbon energy audit.
-        </p>
       </div>
 
-      {/* Flow Steps */}
-      <div className="flex items-center gap-4 mb-10 text-sm text-muted-foreground flex-wrap justify-center">
-        {[
-          { icon: <FileUp className="h-4 w-4" />, label: "Upload CSV / PKL" },
-          { icon: <Zap className="h-4 w-4" />, label: "Run Energy Audit" },
-          { icon: <Leaf className="h-4 w-4" />, label: "View Dashboard" },
-        ].map((step, i) => (
-          <div key={i} className="flex items-center gap-2">
-            {i > 0 && <span className="text-border">→</span>}
-            <div className="flex items-center gap-1.5 bg-secondary/50 rounded-full px-3 py-1.5">
-              {step.icon}
-              <span>{step.label}</span>
+      {/* Right Panel — Upload Form */}
+      <div className="lg:w-1/2 flex items-center justify-center p-8 lg:p-16">
+        <Card className="w-full max-w-md border-border/60">
+          <CardContent className="p-8 space-y-6">
+            <div>
+              <h2 className="text-xl font-semibold mb-1">Upload your file</h2>
+              <p className="text-sm text-muted-foreground">
+                Accepts <span className="text-accent font-medium">.csv</span>{" "}
+                (dataset) or{" "}
+                <span className="text-accent font-medium">.pkl</span> (model)
+              </p>
             </div>
-          </div>
-        ))}
-      </div>
 
-      {/* Upload Card */}
-      <Card className="w-full max-w-lg">
-        <CardContent className="p-6 space-y-6">
-          {/* Drop Zone */}
-          <label
-            className={`flex flex-col items-center justify-center p-10 border-2 border-dashed rounded-lg cursor-pointer transition-colors ${
-              dragOver
-                ? "bg-primary/10 border-primary/50"
-                : file
-                ? "border-accent/50 bg-accent/5"
-                : "border-border hover:border-primary/30 hover:bg-secondary/30"
-            }`}
-            onDragOver={(e) => {
-              e.preventDefault();
-              setDragOver(true);
-            }}
-            onDragLeave={() => setDragOver(false)}
-            onDrop={handleDrop}
-          >
-            <div className={`p-3 rounded-full mb-3 ${file ? "bg-accent/20" : "bg-primary/10"}`}>
-              <UploadIcon className={`h-8 w-8 ${file ? "text-accent" : "text-primary"}`} />
-            </div>
-            {file ? (
-              <>
-                <p className="text-base font-medium text-accent">{file.name}</p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {(file.size / 1024).toFixed(1)} KB · Click to change
-                </p>
-              </>
-            ) : (
-              <>
-                <p className="text-base font-medium">Drop your CSV or PKL file here</p>
-                <p className="text-sm text-muted-foreground mt-1">or click to browse</p>
-              </>
-            )}
-            <input
-              type="file"
-              accept=".csv,.pkl"
-              className="hidden"
-              onChange={(e) => {
-                const f = e.target.files?.[0];
-                if (f) handleFile(f);
+            {/* Drop Zone */}
+            <label
+              className={`flex flex-col items-center justify-center p-10 border-2 border-dashed rounded-xl cursor-pointer transition-all duration-200 ${
+                dragOver
+                  ? "bg-primary/10 border-primary/50 scale-[1.01]"
+                  : file
+                  ? "border-accent/50 bg-accent/5"
+                  : "border-border hover:border-primary/30 hover:bg-secondary/30"
+              }`}
+              onDragOver={(e) => {
+                e.preventDefault();
+                setDragOver(true);
               }}
-            />
-          </label>
+              onDragLeave={() => setDragOver(false)}
+              onDrop={handleDrop}
+            >
+              <div
+                className={`p-3 rounded-full mb-3 ${
+                  file ? "bg-accent/20" : "bg-primary/10"
+                }`}
+              >
+                <UploadIcon
+                  className={`h-8 w-8 ${
+                    file ? "text-accent" : "text-primary"
+                  }`}
+                />
+              </div>
+              {file ? (
+                <>
+                  <p className="text-base font-medium text-accent">
+                    {file.name}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {(file.size / 1024).toFixed(1)} KB · Click to change
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p className="text-base font-medium">
+                    Drop your file here
+                  </p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    or click to browse
+                  </p>
+                </>
+              )}
+              <input
+                type="file"
+                accept=".csv,.pkl"
+                className="hidden"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) handleFile(f);
+                }}
+              />
+            </label>
 
-          {/* Epochs Input */}
-          <div className="space-y-2">
-            <Label htmlFor="epochs" className="text-sm">
-              Number of Epochs
-            </Label>
-            <Input
-              id="epochs"
-              type="number"
-              min={1}
-              max={100}
-              value={epochs}
-              onChange={(e) => setEpochs(Math.max(1, parseInt(e.target.value) || 1))}
-              className="bg-secondary/30"
-            />
-            <p className="text-xs text-muted-foreground">
-              More epochs = more accurate energy measurement but longer runtime
-            </p>
-          </div>
+            {/* Epochs Input */}
+            <div className="space-y-2">
+              <Label htmlFor="epochs" className="text-sm">
+                Number of Epochs
+              </Label>
+              <Input
+                id="epochs"
+                type="number"
+                min={1}
+                max={100}
+                value={epochsValue}
+                onChange={(e) => setEpochsValue(e.target.value)}
+                onBlur={() => {
+                  if (!epochsValue || parseInt(epochsValue) < 1) {
+                    setEpochsValue("1");
+                  }
+                }}
+                className="bg-secondary/30"
+                placeholder="e.g. 5"
+              />
+              <p className="text-xs text-muted-foreground">
+                More epochs = more accurate measurement but longer runtime
+              </p>
+            </div>
 
-          {/* Submit */}
-          <Button
-            className="w-full"
-            size="lg"
-            disabled={!file || loading}
-            onClick={handleSubmit}
-          >
-            {loading ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                Running Audit...
-              </>
-            ) : (
-              <>
-                <Zap className="h-4 w-4 mr-2" />
-                Run Energy Audit
-              </>
+            {/* Submit */}
+            <Button
+              className="w-full"
+              size="lg"
+              disabled={!file || loading}
+              onClick={handleSubmit}
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  Running Audit...
+                </>
+              ) : (
+                <>
+                  <Zap className="h-4 w-4 mr-2" />
+                  Run Energy Audit
+                </>
+              )}
+            </Button>
+
+            {loading && (
+              <p className="text-xs text-center text-muted-foreground animate-pulse">
+                CodeCarbon is measuring energy consumption. This may take a
+                while…
+              </p>
             )}
-          </Button>
-
-          {loading && (
-            <p className="text-xs text-center text-muted-foreground animate-pulse">
-              CodeCarbon is measuring energy consumption. This may take a while depending on epochs and dataset size...
-            </p>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Backend instructions */}
-      <div className="mt-10 max-w-lg w-full">
-        <h3 className="text-sm font-semibold text-muted-foreground mb-3 uppercase tracking-wider">
-          Backend Setup (run locally)
-        </h3>
-        <Card className="bg-secondary/30">
-          <CardContent className="p-4 font-mono text-sm space-y-1 text-muted-foreground">
-            <p>$ cd backend</p>
-            <p>$ pip install -r requirements.txt</p>
-            <p>$ python app.py</p>
-            <p className="text-accent">✅ Server running on http://localhost:5000</p>
           </CardContent>
         </Card>
       </div>
