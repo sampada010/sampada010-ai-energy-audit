@@ -68,11 +68,23 @@ def audit():
         except Exception:
             pass
 
-        return jsonify(payload)
+        # Sanitize NaN/Infinity values before JSON serialization
+        import math
+
+        def sanitize(obj):
+            if isinstance(obj, float) and (math.isnan(obj) or math.isinf(obj)):
+                return None
+            if isinstance(obj, dict):
+                return {k: sanitize(v) for k, v in obj.items()}
+            if isinstance(obj, list):
+                return [sanitize(i) for i in obj]
+            return obj
+
+        return jsonify(sanitize(payload))
 
     finally:
         os.unlink(tmp_path)
 
 
 if __name__ == "__main__":
-    app.run(debug=True, port=5000)
+    app.run(debug=True, port=5000, use_reloader=False)
