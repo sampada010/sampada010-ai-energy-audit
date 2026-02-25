@@ -4,14 +4,20 @@ Follow these steps:
 
 ```sh
 # Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+git clone https://github.com/sampada010/sampada010-ai-energy-audit
 
 # Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+cd sampada010-ai-energy-audit
 
-# Step 3: Install the necessary dependencies.
-npm i
+# Step 3: Start Backend
+cd backend
+pip install -r requirements.txt
+python app.py
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+# Step 4: Start Frontend
+cd ..
+# Install the necessary dependencies.
+npm install
+# Start the development server with auto-reloading and an instant preview.
 npm run dev
 ```
